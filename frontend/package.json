@@ -25,6 +25,7 @@
     "@kitware/vtk.js": "^29.7.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.47.2",
     "@vitejs/plugin-react": "^4.2.0",
     "@storybook/addon-essentials": "^8.2.9",
     "@storybook/addon-interactions": "^8.2.9",
@@ -35,5 +36,16 @@
     "openapi-typescript": "^6.7.1",
     "typescript": "^5.4.0",
     "vite": "^5.2.0"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "gen:api": "openapi-typescript http://localhost:8000/openapi.json -o src/api/generated.ts",
+    "gen:api:local": "openapi-typescript ../api/openapi.json -o src/api/generated.ts",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build",
+    "postinstall": "mkdir -p public/vtkjs && cp node_modules/@kitware/vtk.js/dist/vtk.js public/vtkjs/vtk.js || true",
+    "test:e2e": "playwright test"
   }
 }
