@@ -13,8 +13,12 @@ set -euo pipefail
 #   OPENAI_API_KEY    Required for Codex CLI
 
 SESSION_NAME=${1:-microfluidic-agents}
+SOCKET_NAME=${SOCKET_NAME:-codex-agents}
 CODEX_BIN=${CODEX_BIN:-codex}
 ROOT_DIR="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+
+# Ensure we don't inherit an existing tmux session
+unset TMUX || true
 
 require_tmux() {
   if ! command -v tmux >/dev/null 2>&1; then
@@ -23,6 +27,11 @@ require_tmux() {
     echo "  sudo apt-get install tmux  # Debian/Ubuntu"
     exit 1
   fi
+}
+
+# tmux wrapper bound to a dedicated socket to avoid server conflicts
+tm() {
+  command tmux -L "$SOCKET_NAME" "$@"
 }
 
 codex_cmd_for_policy() {
@@ -49,39 +58,40 @@ open_window() {
   local name="$1"; shift
   local policy="$1"; shift
 
-  tmux new-window -t "$session" -n "$name"
-  tmux send-keys -t "$session:$name" "cd '$ROOT_DIR'" C-m "clear" C-m
+  tm new-window -t "$session" -n "$name"
+  tm send-keys -t "$session:$name" "cd '$ROOT_DIR'" C-m "clear" C-m
 
   if command -v "$CODEX_BIN" >/dev/null 2>&1; then
-    tmux send-keys -t "$session:$name" "CODEX_BIN='$CODEX_BIN' scripts/run_codex_with_policy.sh '$policy'" C-m
+    tm send-keys -t "$session:$name" "CODEX_BIN='$CODEX_BIN' scripts/run_codex_with_policy.sh '$policy'" C-m
   else
-    tmux send-keys -t "$session:$name" "echo 'Codex CLI not found (CODEX_BIN=$CODEX_BIN).'; echo 'Install Codex CLI and run:'; echo '  codex chat --policy $policy'" C-m
+    tm send-keys -t "$session:$name" "echo 'Codex CLI not found (CODEX_BIN=$CODEX_BIN).'; echo 'Install Codex CLI and run:'; echo '  codex chat --policy $policy'" C-m
   fi
 }
 
 main() {
   require_tmux
 
-  if tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
+  echo "Using tmux socket: $SOCKET_NAME"
+  if tm has-session -t "$SESSION_NAME" 2>/dev/null; then
     echo "Re-attaching to existing tmux session: $SESSION_NAME"
-    exec tmux attach -t "$SESSION_NAME"
+    exec tm attach -t "$SESSION_NAME"
   fi
 
   # First window is orchestrator
-  tmux new-session -d -s "$SESSION_NAME" -n orchestrator
-  tmux send-keys -t "$SESSION_NAME:orchestrator" "cd '$ROOT_DIR'" C-m "clear" C-m
+  tm new-session -d -s "$SESSION_NAME" -n orchestrator
+  tm send-keys -t "$SESSION_NAME:orchestrator" "cd '$ROOT_DIR'" C-m "clear" C-m
   if command -v "$CODEX_BIN" >/dev/null 2>&1; then
-    tmux send-keys -t "$SESSION_NAME:orchestrator" "CODEX_BIN='$CODEX_BIN' scripts/run_codex_with_policy.sh '$ROOT_DIR/.ai/policies/orchestrator.md'" C-m
+    tm send-keys -t "$SESSION_NAME:orchestrator" "CODEX_BIN='$CODEX_BIN' scripts/run_codex_with_policy.sh '$ROOT_DIR/.ai/policies/orchestrator.md'" C-m
   else
-    tmux send-keys -t "$SESSION_NAME:orchestrator" "echo 'Codex CLI not found (CODEX_BIN=$CODEX_BIN).'; echo 'Install Codex CLI and run:'; echo '  codex chat --policy .ai/policies/orchestrator.md'" C-m
+    tm send-keys -t "$SESSION_NAME:orchestrator" "echo 'Codex CLI not found (CODEX_BIN=$CODEX_BIN).'; echo 'Install Codex CLI and run:'; echo '  codex chat --policy .ai/policies/orchestrator.md'" C-m
   fi
 
   # Other windows
   open_window "$SESSION_NAME" developer  "$ROOT_DIR/.ai/policies/developer.md"
   open_window "$SESSION_NAME" reviewer   "$ROOT_DIR/.ai/policies/reviewer.md"
 
-  tmux select-window -t "$SESSION_NAME:orchestrator"
-  exec tmux attach -t "$SESSION_NAME"
+  tm select-window -t "$SESSION_NAME:orchestrator"
+  exec tm attach -t "$SESSION_NAME"
 }
 
 main "$@"
