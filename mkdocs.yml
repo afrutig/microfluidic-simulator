@@ -1,0 +1,5 @@
+site_name: Microfluidic Simulator Docs
+nav:
+  - Home: index.md
+theme:
+  name: material

@@ -1,0 +1,52 @@
+repos:
+  # Generic housekeeping
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+
+  # Python: Ruff (imports, lint) and mypy
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.5.6
+    hooks:
+      - id: ruff
+        args: ["--fix"]
+        additional_dependencies: []
+        files: ^api/
+      - id: ruff-format
+        files: ^api/
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.10.0
+    hooks:
+      - id: mypy
+        files: ^api/
+        additional_dependencies: []
+
+  # Frontend: Prettier and ESLint
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v3.3.3
+    hooks:
+      - id: prettier
+        files: ^frontend/
+        additional_dependencies: []
+
+  - repo: https://github.com/pre-commit/mirrors-eslint
+    rev: v8.57.0
+    hooks:
+      - id: eslint
+        name: eslint (frontend)
+        files: ^frontend/.*\.(ts|tsx|js)$
+        args: ["-c", "frontend/.eslintrc.cjs"]
+        additional_dependencies:
+          - eslint@8.57.0
+          - typescript@5.4.0
+          - @typescript-eslint/parser@7.18.0
+          - @typescript-eslint/eslint-plugin@7.18.0
+          - eslint-plugin-react@7.35.0
+          - eslint-plugin-react-hooks@4.6.2
+          - eslint-plugin-jsx-a11y@6.9.0
+          - eslint-plugin-import@2.29.1
+          - eslint-plugin-simple-import-sort@12.1.0
+          - eslint-config-prettier@9.1.0
