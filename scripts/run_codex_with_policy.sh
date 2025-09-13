@@ -18,6 +18,8 @@ CODEX_BIN=${CODEX_BIN:-codex}
 CODEX_SUBCOMMAND=${CODEX_SUBCOMMAND:-}
 CODEX_POLICY_FLAG=${CODEX_POLICY_FLAG:-}
 CODEX_LAUNCH_CMD=${CODEX_LAUNCH_CMD:-}
+CODEX_TRY_FLAGS=${CODEX_TRY_FLAGS:-1}
+CODEX_PIPE_TARGET=${CODEX_PIPE_TARGET:-}
 
 if ! command -v "$CODEX_BIN" >/dev/null 2>&1; then
   echo "Codex CLI not found (CODEX_BIN=$CODEX_BIN)."
@@ -41,21 +43,31 @@ if [ -n "$CODEX_SUBCOMMAND" ] && [ -n "$CODEX_POLICY_FLAG" ]; then
   CANDIDATES+=("$CODEX_BIN $CODEX_SUBCOMMAND $CODEX_POLICY_FLAG '$POLICY'")
 fi
 
-# Stdin first (more tolerant)
-CANDIDATES+=(
-  "cat '$POLICY' | $CODEX_BIN chat"
-  "cat '$POLICY' | $CODEX_BIN agent"
-  "cat '$POLICY' | $CODEX_BIN"
-  "$CODEX_BIN chat --policy '$POLICY'"
-  "$CODEX_BIN agent --policy '$POLICY'"
-  "$CODEX_BIN --policy '$POLICY'"
-  "$CODEX_BIN chat --prompt-file '$POLICY'"
-  "$CODEX_BIN agent --prompt-file '$POLICY'"
-  "$CODEX_BIN --prompt-file '$POLICY'"
-  "$CODEX_BIN chat -p '$POLICY'"
-  "$CODEX_BIN agent -p '$POLICY'"
-  "$CODEX_BIN -p '$POLICY'"
-)
+# Stdin targets (more tolerant)
+if [ -n "$CODEX_PIPE_TARGET" ]; then
+  CANDIDATES+=("cat '$POLICY' | $CODEX_PIPE_TARGET")
+else
+  CANDIDATES+=(
+    "cat '$POLICY' | $CODEX_BIN chat"
+    "cat '$POLICY' | $CODEX_BIN agent"
+    "cat '$POLICY' | $CODEX_BIN"
+  )
+fi
+
+# Only try flags if allowed
+if [ "${CODEX_TRY_FLAGS}" != "0" ]; then
+  CANDIDATES+=(
+    "$CODEX_BIN chat --policy '$POLICY'"
+    "$CODEX_BIN agent --policy '$POLICY'"
+    "$CODEX_BIN --policy '$POLICY'"
+    "$CODEX_BIN chat --prompt-file '$POLICY'"
+    "$CODEX_BIN agent --prompt-file '$POLICY'"
+    "$CODEX_BIN --prompt-file '$POLICY'"
+    "$CODEX_BIN chat -p '$POLICY'"
+    "$CODEX_BIN agent -p '$POLICY'"
+    "$CODEX_BIN -p '$POLICY'"
+  )
+fi
 
 for cmd in "${CANDIDATES[@]}"; do
   echo "Launching: $cmd"
