@@ -74,7 +74,8 @@ main() {
   echo "Using tmux socket: $SOCKET_NAME"
   if tm has-session -t "$SESSION_NAME" 2>/dev/null; then
     echo "Re-attaching to existing tmux session: $SESSION_NAME"
-    exec tm attach -t "$SESSION_NAME"
+    tm attach -t "$SESSION_NAME"
+    exit $?
   fi
 
   # First window is orchestrator
@@ -91,7 +92,8 @@ main() {
   open_window "$SESSION_NAME" reviewer   "$ROOT_DIR/.ai/policies/reviewer.md"
 
   tm select-window -t "$SESSION_NAME:orchestrator"
-  exec tm attach -t "$SESSION_NAME"
+  tm attach -t "$SESSION_NAME"
+  exit $?
 }
 
 main "$@"
