@@ -1,24 +1,65 @@
 name: CI
+
 on:
   push:
-    branches: [ main, master ]
+    branches: ["**"]
   pull_request:
+
+permissions:
+  contents: read
+
 jobs:
   backend:
+    name: Backend Lint & Tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Install backend
+          cache: 'pip'
+          cache-dependency-path: api/pyproject.toml
+
+      - name: Install dependencies
         run: |
-          pip install -U pip
-          pip install -e api/[dev]
-      - name: Lint & Typecheck
-        run: |
-          ruff check api
-          mypy api
-      - name: Tests
+          python -m pip install -U pip
+          python -m pip install -e "api[dev]"
+
+      - name: Lint (ruff)
+        run: ruff check api
+
+      - name: Type check (mypy)
+        run: mypy api
+
+      - name: Run tests (pytest)
         run: pytest -q api
+
+  frontend:
+    name: Frontend Typecheck & Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck (tsc)
+        run: npx tsc --noEmit -p tsconfig.json
+
+      - name: Build (vite)
+        run: npm run build
 
