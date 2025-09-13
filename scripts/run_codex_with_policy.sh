@@ -30,52 +30,45 @@ if [ -n "$CODEX_LAUNCH_CMD" ]; then
   exit $?
 fi
 
-has_subcmd() {
-  local sub=$1
-  "$CODEX_BIN" --help 2>/dev/null | grep -qE "(^|[[:space:]])$sub([[:space:]]|$)" || \
-  "$CODEX_BIN" "$sub" --help 2>/dev/null >/dev/null
-}
+# Build candidate launch commands. Prefer stdin first to avoid flag issues.
+declare -a CANDIDATES=()
 
-flag_in_help() {
-  local sub=$1 flag=$2
-  if [ -n "$sub" ] && has_subcmd "$sub"; then
-    "$CODEX_BIN" "$sub" --help 2>/dev/null | grep -q "$flag" && return 0
-  fi
-  "$CODEX_BIN" --help 2>/dev/null | grep -q "$flag"
-}
-
-run_with() {
-  local sub=$1 flag=$2
-  if [ "$flag" = "stdin" ]; then
-    if [ -n "$sub" ] && has_subcmd "$sub"; then
-      exec "$CODEX_BIN" "$sub" < "$POLICY"
-    else
-      exec "$CODEX_BIN" < "$POLICY"
-    fi
-  else
-    if [ -n "$sub" ]; then
-      exec "$CODEX_BIN" "$sub" "$flag" "$POLICY"
-    else
-      exec "$CODEX_BIN" "$flag" "$POLICY"
-    fi
-  fi
-}
-
-# If user specified exact combo
-if [ -n "$CODEX_POLICY_FLAG" ]; then
-  run_with "$CODEX_SUBCOMMAND" "$CODEX_POLICY_FLAG"
+if [ -n "$CODEX_LAUNCH_CMD" ]; then
+  CANDIDATES+=("${CODEX_LAUNCH_CMD//\{policy\}/$POLICY}")
 fi
 
-# Try common combinations based on help
-if has_subcmd chat && flag_in_help chat "--policy"; then run_with chat --policy; fi
-if has_subcmd agent && flag_in_help agent "--policy"; then run_with agent --policy; fi
-if flag_in_help "" "--policy"; then run_with "" --policy; fi
+if [ -n "$CODEX_SUBCOMMAND" ] && [ -n "$CODEX_POLICY_FLAG" ]; then
+  CANDIDATES+=("$CODEX_BIN $CODEX_SUBCOMMAND $CODEX_POLICY_FLAG '$POLICY'")
+fi
 
-if has_subcmd chat && flag_in_help chat "--prompt-file"; then run_with chat --prompt-file; fi
-if has_subcmd agent && flag_in_help agent "--prompt-file"; then run_with agent --prompt-file; fi
-if flag_in_help "" "--prompt-file"; then run_with "" --prompt-file; fi
+# Stdin first (more tolerant)
+CANDIDATES+=(
+  "cat '$POLICY' | $CODEX_BIN chat"
+  "cat '$POLICY' | $CODEX_BIN agent"
+  "cat '$POLICY' | $CODEX_BIN"
+  "$CODEX_BIN chat --policy '$POLICY'"
+  "$CODEX_BIN agent --policy '$POLICY'"
+  "$CODEX_BIN --policy '$POLICY'"
+  "$CODEX_BIN chat --prompt-file '$POLICY'"
+  "$CODEX_BIN agent --prompt-file '$POLICY'"
+  "$CODEX_BIN --prompt-file '$POLICY'"
+  "$CODEX_BIN chat -p '$POLICY'"
+  "$CODEX_BIN agent -p '$POLICY'"
+  "$CODEX_BIN -p '$POLICY'"
+)
 
-# Fallback: pipe policy to stdin
-if has_subcmd chat; then run_with chat stdin; fi
-run_with "" stdin
+for cmd in "${CANDIDATES[@]}"; do
+  echo "Launching: $cmd"
+  # Use bash -lc to support pipes and quotes
+  bash -lc "$cmd"
+  ec=$?
+  # If the process is interactive it won't return here; for quick exits, try next
+  if [ $ec -eq 0 ] || [ $ec -eq 130 ] || [ $ec -eq 143 ]; then
+    exit 0
+  fi
+  # Brief pause between attempts to keep logs readable
+  sleep 0.3
+done
 
+echo "All launch patterns failed. Consider setting CODEX_LAUNCH_CMD='codex <cmd> --flag {policy}'"
+exit 1
