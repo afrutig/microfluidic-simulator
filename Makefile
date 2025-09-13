@@ -1,6 +1,6 @@
 PY?=python
 
-.PHONY: help install api dev worker test lint typecheck run
+.PHONY: help install api dev worker test lint typecheck run agents
 
 help:
 	@echo "Targets: install, api, worker, test, lint, typecheck, run"
@@ -26,3 +26,5 @@ typecheck:
 
 run: install api
 
+agents:
+	bash scripts/run_agents.sh
