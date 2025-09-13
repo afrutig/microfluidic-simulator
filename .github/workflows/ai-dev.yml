@@ -1,0 +1,27 @@
+name: AI Dev (Scaffold)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 9 * * 1' # Mondays at 09:00 UTC (disabled unless enabled here)
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  info:
+    name: Instructions
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Show usage
+        run: |
+          echo "This is a scaffold for an automated AI dev loop."
+          echo "To actually run the multi-agent shell in CI, use a self-hosted runner"
+          echo "with the Codex CLI installed and update runs-on to 'self-hosted'."
+          echo
+          echo "Locally, run: scripts/run_agents.sh"
+          echo "Agents will open in tmux windows with role policies from .ai/policies/."
+
