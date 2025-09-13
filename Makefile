@@ -1,6 +1,6 @@
 PY?=python
 
-.PHONY: help install api dev worker test lint typecheck run agents agents-macos agents-screen
+.PHONY: help install api dev worker test lint typecheck run agents agents-macos agents-screen agents-watch
 
 help:
 	@echo "Targets: install, api, worker, test, lint, typecheck, run"
@@ -34,3 +34,6 @@ agents-macos:
 
 agents-screen:
 	bash scripts/run_agents_screen.sh
+
+agents-watch:
+	python3 scripts/watch_agents_terminal.py
